@@ -10,6 +10,61 @@ import AppKit
 @MainActor
 enum Screenshots {
 
+    /// Play a song to the keyboard without opening a window.
+    ///
+    /// `--play <file>` is here for checking that a song really does drive the
+    /// lights, which is hard to be sure of from the app alone.
+    static func playIfRequested() -> Bool {
+        let arguments = CommandLine.arguments
+        guard let flag = arguments.firstIndex(of: "--play"), arguments.count > flag + 1
+        else { return false }
+
+        let url = URL(fileURLWithPath: arguments[flag + 1])
+        let seconds = arguments.firstIndex(of: "--seconds")
+            .flatMap { arguments.count > $0 + 1 ? Double(arguments[$0 + 1]) : nil } ?? 15
+
+        do {
+            let file = try MIDIFile(url: url)
+            let lesson = Lesson.compile(from: file, name: url.lastPathComponent)
+            print("\(lesson.steps.count) steps, \(lesson.playback.count) note events")
+            print("hands from \(lesson.handSignal.rawValue), \(lesson.droppedNotes.count) notes left out")
+
+            let piano = PianoConnection()
+            piano.connect()
+            guard piano.status.isConnected else {
+                print("could not connect: \(piano.status.description)")
+                return true
+            }
+            print("connected to \(piano.status.description)")
+
+            let semaphore = DispatchSemaphore(value: 0)
+            Task { @MainActor in
+                await piano.prepareIfNeeded()
+                piano.allLampsOff()
+                let start = ContinuousClock.now
+                var lit = 0
+                for event in lesson.playback where event.time < seconds {
+                    let due = start + .seconds(event.time)
+                    let wait = due - ContinuousClock.now
+                    if wait > .zero { try? await Task.sleep(for: wait) }
+                    if event.isOn {
+                        piano.setLamps(on: [event.note], off: [])
+                        lit += 1
+                    } else {
+                        piano.setLamps(on: [], off: [event.note])
+                    }
+                }
+                piano.allLampsOff()
+                print("lit \(lit) keys over \(seconds)s")
+                semaphore.signal()
+            }
+            semaphore.wait()
+        } catch {
+            print("could not read \(url.lastPathComponent): \(error.localizedDescription)")
+        }
+        return true
+    }
+
     static func runIfRequested() -> Bool {
         let arguments = CommandLine.arguments
         guard let flag = arguments.firstIndex(of: "--screenshots") else { return false }

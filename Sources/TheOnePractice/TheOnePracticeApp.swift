@@ -10,6 +10,7 @@ struct TheOnePracticeApp: App {
     init() {
         // Used to make the pictures in the README.
         if Screenshots.runIfRequested() { exit(0) }
+        if Screenshots.playIfRequested() { exit(0) }
     }
 
     var body: some Scene {
