@@ -1,0 +1,137 @@
+name: Release
+
+# Publishing a signed, notarised build.
+#
+# Tag a version and push it:
+#     git tag v1.0.0 && git push origin v1.0.0
+#
+# Everything below needs these repository secrets. Without them the workflow
+# stops early and tells you which one is missing, rather than producing an
+# unsigned build that macOS will refuse to open.
+#
+#   DEVELOPER_ID_CERT       Developer ID Application certificate (.p12), base64
+#   DEVELOPER_ID_CERT_PASS  Password for that .p12
+#   APPLE_TEAM_ID           Your 10-character team ID
+#   APPLE_ID                The Apple ID used for notarising
+#   APPLE_APP_PASSWORD      App-specific password for that Apple ID
+#
+# See docs/RELEASING.md for how to create each one.
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the latest Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Check the signing secrets are present
+        env:
+          CERT: ${{ secrets.DEVELOPER_ID_CERT }}
+          TEAM: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          missing=""
+          [ -z "$CERT" ]         && missing="$missing DEVELOPER_ID_CERT"
+          [ -z "$TEAM" ]         && missing="$missing APPLE_TEAM_ID"
+          [ -z "$APPLE_ID" ]     && missing="$missing APPLE_ID"
+          [ -z "$APP_PASSWORD" ] && missing="$missing APPLE_APP_PASSWORD"
+          if [ -n "$missing" ]; then
+            echo "::error::Missing secrets:$missing — see docs/RELEASING.md"
+            exit 1
+          fi
+
+      - name: Test before releasing
+        run: swift test
+
+      - name: Import the signing certificate
+        env:
+          CERT: ${{ secrets.DEVELOPER_ID_CERT }}
+          CERT_PASS: ${{ secrets.DEVELOPER_ID_CERT_PASS }}
+        run: |
+          # A throwaway keychain, so nothing is left behind on the runner.
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          PASSWORD="$(uuidgen)"
+          security create-keychain -p "$PASSWORD" "$KEYCHAIN"
+          security set-keychain-settings -lut 900 "$KEYCHAIN"
+          security unlock-keychain -p "$PASSWORD" "$KEYCHAIN"
+
+          echo "$CERT" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" \
+            -P "$CERT_PASS" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: \
+            -s -k "$PASSWORD" "$KEYCHAIN" >/dev/null
+          security list-keychain -d user -s "$KEYCHAIN" login.keychain-db
+          rm "$RUNNER_TEMP/cert.p12"
+
+          IDENTITY=$(security find-identity -v -p codesigning "$KEYCHAIN" \
+            | grep "Developer ID Application" | head -1 | sed 's/.*"\(.*\)"/\1/')
+          echo "SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "Signing as: $IDENTITY"
+
+      - name: Build and sign
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: Scripts/release.sh "$SIGNING_IDENTITY" "$TEAM_ID"
+
+      - name: Notarise
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: Scripts/notarize.sh "build/TheONE Light Practice.dmg"
+
+      - name: Work out the version and checksum
+        id: info
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          [ -z "$VERSION" ] && VERSION="0.0.0-dev"
+          SHA=$(shasum -a 256 "build/TheONE Light Practice.dmg" | cut -d' ' -f1)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "sha256=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Version $VERSION, sha256 $SHA"
+
+      - name: Publish the release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: build/TheONE Light Practice.dmg
+          generate_release_notes: true
+          body: |
+            ## Install
+
+            ```
+            brew install --cask theone-light-practice
+            ```
+
+            Or download the `.dmg` below and drag the app to your Applications
+            folder. It's signed and notarised by Apple, so it opens normally.
+
+            `sha256: ${{ steps.info.outputs.sha256 }}`
+
+      - name: Update the Homebrew cask
+        env:
+          VERSION: ${{ steps.info.outputs.version }}
+          SHA256: ${{ steps.info.outputs.sha256 }}
+        run: |
+          CASK="Casks/theone-light-practice.rb"
+          sed -i '' "s/version \".*\"/version \"$VERSION\"/" "$CASK"
+          sed -i '' "s/sha256 \".*\"/sha256 \"$SHA256\"/" "$CASK"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add "$CASK"
+          git commit -m "Update cask to $VERSION" || echo "nothing to update"
+          git push origin HEAD:main || echo "could not push cask update"
+
+      - name: Clean up the keychain
+        if: always()
+        run: security delete-keychain "$RUNNER_TEMP/signing.keychain-db" || true

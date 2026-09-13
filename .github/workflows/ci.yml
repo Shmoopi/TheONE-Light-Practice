@@ -1,0 +1,36 @@
+name: Build and test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Use the latest Xcode
+        run: sudo xcode-select -s /Applications/Xcode_16.app
+
+      - name: Show versions
+        run: swift --version
+
+      - name: Build
+        run: swift build -c release
+
+      - name: Test
+        run: swift test
+
+      - name: Build the app bundle
+        run: Scripts/bundle.sh release
+
+      - name: Check the bundle looks right
+        run: |
+          APP="build/TheONE Light Practice.app"
+          test -x "$APP/Contents/MacOS/TheONE Light Practice"
+          test -f "$APP/Contents/Info.plist"
+          test -f "$APP/Contents/Resources/AppIcon.icns"
+          echo "bundle OK"

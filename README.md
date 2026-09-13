@@ -1,0 +1,134 @@
+<div align="center">
+
+<img src="docs/AppIcon-1024.png" width="128" alt="">
+
+# TheONE Light Practice
+
+**Learn any song on your light-up piano.**
+
+Your keyboard came with an app that only plays the songs in its own library.
+This one plays *yours*.
+
+</div>
+
+---
+
+![The main screen](docs/screenshots/practice.png)
+
+## What it does
+
+Drop in a song, and your keyboard lights up the key to play. It waits for you to
+play it, then lights up the next one. Play as slowly as you like — it doesn't move
+on until you do.
+
+- **Practice** — one note at a time, at your own pace
+- **Listen** — hear and watch the song played for you, at any speed
+- **One hand at a time** — learn the right hand, then the left, then both
+- **Jump anywhere** — drag the progress bar to practise a tricky bit
+
+## What you need
+
+- A **THE ONE Light** keyboard, plugged into your Mac with a USB cable
+- A Mac running **macOS 14** or later
+- Some songs — any `.mid` file works. There are three easy ones in `Samples/` to
+  get started.
+
+## Getting started
+
+**Install it**
+
+```
+brew install --cask theone-light-practice
+```
+
+Or download the latest release, drag it to your Applications folder, and open it.
+
+**Then**
+
+1. Plug in your keyboard and turn it on. The app finds it by itself.
+2. Drag a song onto the list on the left, or use the Import button.
+3. Press **Start**, and play the key that lights up.
+
+That's it. Your progress, mistakes and accuracy show as you go.
+
+## The colours on screen
+
+![The on-screen keyboard](docs/screenshots/keyboard.png)
+
+Your real keyboard can only light a key up or leave it dark. The keyboard on
+screen has a bit more to say:
+
+| | |
+|---|---|
+| 🟠 **Orange** | Play this one |
+| 🟢 **Green** | You got it |
+| 🔴 **Red** | Wrong note — it'll keep waiting |
+| 🔵 **Blue** | A key you're holding down |
+
+## Settings worth knowing
+
+**Both hands / Right hand / Left hand** — Most people learn one hand first. Pick a
+hand and the other one is left out.
+
+**Hold chords together** — Off by default. Turn it on and a chord only counts when
+every note is down at once, which is how you'd really play it. The whole chord
+stays lit until you have it.
+
+**Fit to keyboard** — On by default. Most piano music is written for a full-size
+88-key piano, and yours has 61 keys. This shifts the notes that don't fit onto
+ones that do, instead of skipping them. The app tells you when it's had to do
+this, because those notes will sound a little different.
+
+**Speed** — In Listen mode, slow the song right down to hear how a passage goes.
+
+## Questions
+
+**It says it can't find my keyboard.**
+Check the USB cable is in and the keyboard is switched on, then quit and reopen the
+app. The app lists what it *did* find, which usually points at the problem.
+
+**Nothing lights up.**
+If the official app is open, close it — only one program can drive the lights at a
+time.
+
+**Some notes are missing.**
+The song probably goes higher or lower than 61 keys reach. Turn on **Fit to
+keyboard** and they'll be moved into range.
+
+**It says my hands might be wrong.**
+Some song files say which hand plays what, and some don't. When a file doesn't say,
+the app guesses by splitting at middle C — which is wrong wherever your hands cross
+over. It'll tell you when it's guessing.
+
+**Where are my songs kept?**
+In `~/Library/Application Support/TheONE Light Practice/Songs`. Songs are copied
+there when you add them, so moving or deleting the original won't break anything.
+
+## Making your own practice songs
+
+`Scripts/make-easy-song.py` writes a few simple, out-of-copyright tunes:
+
+```
+python3 Scripts/make-easy-song.py
+```
+
+Any MIDI file works, though. If the file labels its parts "Left Hand" and "Right
+Hand", the app will use those labels and get the hands exactly right.
+
+## Building it yourself
+
+```
+swift build            # build
+swift test             # run the tests
+Scripts/bundle.sh      # make the app
+```
+
+`docs/PROTOCOL.md` explains how the app talks to the keyboard, if you're curious.
+
+## A note on what this is
+
+This is a personal project, not a product from the people who make the keyboard.
+It talks to hardware you already own, over the standard MIDI connection it already
+has. It doesn't touch your account, the official app, or anything you've bought.
+
+MIT licensed — see `LICENSE`.
