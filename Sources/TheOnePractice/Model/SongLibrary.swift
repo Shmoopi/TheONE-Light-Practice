@@ -27,8 +27,11 @@ public struct SongLibrary {
     public let folder: URL
 
     public init(folder: URL? = nil) {
+        // Always use the fully resolved path. Songs are identified by their
+        // location, and the same folder can be spelled two ways (/var and
+        // /private/var, for instance) — which would let one song appear twice.
         if let folder {
-            self.folder = folder
+            self.folder = folder.resolvingSymlinksInPath()
         } else {
             let support = FileManager.default.urls(
                 for: .applicationSupportDirectory, in: .userDomainMask
@@ -36,6 +39,7 @@ public struct SongLibrary {
             self.folder = support
                 .appendingPathComponent("TheONE Light Practice")
                 .appendingPathComponent("Songs")
+                .resolvingSymlinksInPath()
         }
     }
 
@@ -71,7 +75,7 @@ public struct SongLibrary {
 
         do {
             try FileManager.default.copyItem(at: source, to: destination!)
-            return destination!
+            return destination!.resolvingSymlinksInPath()
         } catch {
             throw LibraryError.couldNotCopy(
                 source.lastPathComponent, error.localizedDescription
@@ -88,6 +92,7 @@ public struct SongLibrary {
         ) else { return [] }
 
         return contents
+            .map { $0.resolvingSymlinksInPath() }
             .filter { ["mid", "midi"].contains($0.pathExtension.lowercased()) }
             .sorted { a, b in
                 a.lastPathComponent.localizedStandardCompare(b.lastPathComponent) == .orderedAscending
@@ -95,8 +100,10 @@ public struct SongLibrary {
     }
 
     public func remove(_ url: URL) {
-        guard url.path.hasPrefix(folder.path) else { return }   // never touch originals
-        try? FileManager.default.removeItem(at: url)
+        // Only ever delete our own copy, never the file you imported.
+        let resolved = url.resolvingSymlinksInPath()
+        guard resolved.path.hasPrefix(folder.path) else { return }
+        try? FileManager.default.removeItem(at: resolved)
     }
 
     // MARK: - Naming
