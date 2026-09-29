@@ -4,10 +4,9 @@
 
 # TheONE Light Practice
 
-**Learn any song on your light-up piano.**
+**Play and learn any song on TheONE Light piano.**
 
-Your keyboard came with an app that only plays the songs in its own library.
-This one plays *yours*.
+Reverse-engineered USB commands for TheONE Light Piano allowing you to learn and play any song with the light-up keys!
 
 </div>
 
@@ -17,18 +16,17 @@ This one plays *yours*.
 
 ## What it does
 
-Drop in a song, and your keyboard lights up the key to play. It waits for you to
-play it, then lights up the next one. Play as slowly as you like — it doesn't move
-on until you do.
+Drop in a song and your keyboard lights up the key to play. It waits for you to
+play it, then lights up the next one. Learn and play at any speed.
 
-- **Practice** — one note at a time, at your own pace
-- **Listen** — hear and watch the song played for you, at any speed
+- **Practice** — one note at a time
+- **Listen** — hear and watch the song played for you
 - **One hand at a time** — learn the right hand, then the left, then both
-- **Jump anywhere** — drag the progress bar to practise a tricky bit
+- **Jump anywhere** — drag the progress bar to practise any portion of a song
 
 ## What you need
 
-- A **THE ONE Light** keyboard, plugged in with a USB cable
+- A **THE ONE Light** keyboard, plugged in with a USB cable (USB 3.0)
 - A **Mac** running macOS 14 or later, or an **iPad or iPhone** running iOS 17 or
   later
 - Some songs — any `.mid` file works. Running `python3 Scripts/make-easy-song.py`
@@ -59,12 +57,11 @@ which cable or adapter you need.
 
 That's it. Your progress, mistakes and accuracy show as you go.
 
-## The colours on screen
+## The colors on screen
 
 ![The on-screen keyboard](docs/screenshots/keyboard.png)
 
-Your real keyboard can only light a key up or leave it dark. The keyboard on
-screen has a bit more to say:
+The keyboard in the app follows and lights up as you go along:
 
 | | |
 |---|---|
@@ -76,14 +73,14 @@ screen has a bit more to say:
 ## Settings worth knowing
 
 **Both hands / Right hand / Left hand** — Most people learn one hand first. Pick a
-hand and the other one is left out.
+hand and the other one is left out (best effort).
 
 **Hold chords together** — Off by default. Turn it on and a chord only counts when
 every note is down at once, which is how you'd really play it. The whole chord
 stays lit until you have it.
 
 **Fit to keyboard** — On by default. Most piano music is written for a full-size
-88-key piano, and yours has 61 keys. This shifts the notes that don't fit onto
+88-key piano, TheONE Light has 61 keys. This shifts the notes that don't fit onto
 ones that do, instead of skipping them. The app tells you when it's had to do
 this, because those notes will sound a little different.
 
@@ -93,26 +90,26 @@ this, because those notes will sound a little different.
 
 **It says it can't find my keyboard.**
 Check the USB cable is in and the keyboard is switched on, then quit and reopen the
-app. The app lists what it *did* find, which usually points at the problem.
+app. The app lists what it finds, which usually points at the problem.
 
 **Nothing lights up.**
-If the official app is open, close it — only one program can drive the lights at a
+If the official app is open, close it — only one program can drive the keyboard lights at a
 time.
 
 **Some notes are missing.**
-The song probably goes higher or lower than 61 keys reach. Turn on **Fit to
+The song may go higher or lower than 61 keys. Turn on **Fit to
 keyboard** and they'll be moved into range.
 
 **It says my hands might be wrong.**
 Some song files say which hand plays what, and some don't. When a file doesn't say,
 the app guesses by splitting at middle C — which is wrong wherever your hands cross
-over. It'll tell you when it's guessing.
+over.
 
 **Where are my songs kept?**
 On a Mac, in `~/Library/Application Support/TheONE Light Practice/Songs`. On an
 iPad or iPhone, in the app's own folder in the **Files** app — you can drop `.mid`
 files straight in there. Songs are copied in when you add them, so moving or
-deleting the original won't break anything.
+deleting the original .mid files shouldn't break anything.
 
 ## Making your own practice songs
 
@@ -125,10 +122,10 @@ python3 Scripts/make-easy-song.py twinkle   # just one
 ```
 
 It needs nothing but Python itself. These are generated rather than kept in the
-repository, so there's no music here that isn't free to pass on.
+repository.
 
 Any MIDI file works, though. If the file labels its parts "Left Hand" and "Right
-Hand", the app will use those labels and get the hands exactly right.
+Hand", the app will use those labels.
 
 ## Building it yourself
 
@@ -140,15 +137,16 @@ Scripts/bundle.sh                    # make the Mac app
 ```
 
 For iPhone and iPad, open `TheOnePractice.xcodeproj` — it builds the same sources
-in `Sources/TheOnePractice`, so there's one copy of the code and no project file
+in `Sources/TheOnePractice`. There's one copy of the code and no project file
 to keep in step. See [docs/IPHONE-AND-IPAD.md](docs/IPHONE-AND-IPAD.md).
 
-`docs/PROTOCOL.md` explains how the app talks to the keyboard, if you're curious.
+`docs/PROTOCOL.md` explains how the app talks to the keyboard.
 
-## A note on what this is
+## YMMV
 
-This is a personal project, not a product from the people who make the keyboard.
-It talks to hardware you already own, over the standard MIDI connection it already
-has. It doesn't touch your account, the official app, or anything you've bought.
+This is a personal project. This is not a product from the people who make the keyboard.
+It talks to hardware you own, over the standard MIDI connection. It doesn't touch your account, the official app, or anything you've bought. This is in no way affiliated with the manufacturer. No warranty or guarantees are made about this project or any of the code within. It could break your device and/or void your device warranty. Your mileage may vary. Use at your own discretion.
+
+## License
 
 MIT licensed — see `LICENSE`.
