@@ -36,7 +36,7 @@ public final class PracticeModel {
 
     public let piano = PianoConnection()
     /// Where your songs are kept.
-    public let library = SongLibrary()
+    public let library: SongLibrary
 
     public var songs: [SongEntry] = []
     public var selectedSong: SongEntry?
@@ -64,22 +64,39 @@ public final class PracticeModel {
     /// Where you're about to jump to, while dragging the progress bar.
     public private(set) var scrubTarget: Int?
 
-    private var playbackTask: Task<Void, Never>?
+    /// Only one thing plays at a time — see ``PlaybackRunner``.
+    private let playback = PlaybackRunner()
 
-    public init() {
+    public init(library: SongLibrary = SongLibrary()) {
+        self.library = library
         piano.onKeyEvent = { [weak self] event in
             self?.handle(event)
         }
-        loadSavedSongs()
+        rescanLibrary()
     }
 
-    /// Load the songs you've added before.
-    private func loadSavedSongs() {
-        for url in library.songs() {
+    /// Pick up songs added or removed outside the app.
+    ///
+    /// On iPhone and iPad the song folder *is* the app's folder in Files, so music
+    /// can appear there while the app is in the background.
+    public func rescanLibrary() {
+        let onDisk = library.songs()
+
+        songs.removeAll { !onDisk.contains($0.url) }
+        for url in onDisk where !songs.contains(where: { $0.url == url }) {
             guard let entry = makeEntry(for: url) else { continue }
-            if !songs.contains(entry) { songs.append(entry) }
+            songs.append(entry)
         }
-        if selectedSong == nil, let first = songs.first { select(first) }
+        songs.sort { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+
+        if let selected = selectedSong, !songs.contains(selected) {
+            // The song you were on has gone. Move to another rather than leaving a
+            // lesson pointing at a file that no longer exists.
+            selectedSong = songs.first
+            if let next = selectedSong { select(next) } else { lesson = nil; session = nil }
+        } else if selectedSong == nil, let first = songs.first {
+            select(first)
+        }
     }
 
     private func makeEntry(for url: URL) -> SongEntry? {
@@ -229,11 +246,13 @@ public final class PracticeModel {
             lastError = songWarning ?? "This song has no playable notes."
             return
         }
-        session = LessonSession(lesson: lesson, requireSimultaneous: requireSimultaneous)
+        session = resumedSession(for: lesson)
         isRunning = true
         lastWrongKey = nil
 
-        playbackTask = Task { @MainActor in
+        let from = session?.index ?? 0
+        playback.replace { [weak self] in
+            guard let self else { return }
             await piano.prepareIfNeeded()
             piano.allLampsOff()
             switch mode {
@@ -241,21 +260,40 @@ public final class PracticeModel {
                 showCurrentStep()
                 statusMessage = "Play the lit key."
             case .listen:
-                await runListenMode(lesson, from: session?.index ?? 0)
+                await runListenMode(lesson, from: from)
             }
         }
     }
 
+    /// A fresh session that picks up where the timeline was left.
+    ///
+    /// Dragging the timeline and then pressing Start used to go back to the
+    /// beginning regardless, which made the "Practising from step N" note under the
+    /// timeline a lie and replayed the song you had just skipped past. A song that
+    /// has already finished does start again from the top.
+    func resumedSession(for lesson: Lesson) -> LessonSession {
+        var fresh = LessonSession(lesson: lesson, requireSimultaneous: requireSimultaneous)
+        if let current = session,
+           current.lesson.steps.count == lesson.steps.count,
+           !current.isFinished {
+            fresh.seek(to: current.index)
+        }
+        return fresh
+    }
+
     public func stop() {
-        playbackTask?.cancel()
-        playbackTask = nil
+        let wasRunning = isRunning
+        playback.cancel()
         isRunning = false
         piano.allLampsOff()
         piano.allSoundOff()
+        // The cancelled run stays quiet about why it ended, so say it here.
+        if wasRunning { statusMessage = "Stopped." }
     }
 
     public func restart() {
         stop()
+        session?.seek(to: 0)
         start()
     }
 
@@ -288,10 +326,12 @@ public final class PracticeModel {
 
         switch (mode, isRunning) {
         case (.listen, true):
-            // Start playing again from the new spot.
-            playbackTask?.cancel()
-            playbackTask = Task { @MainActor in
-                await runListenMode(lesson, from: target)
+            // Pick the song up again from the new spot. The run being replaced
+            // turns its own notes and lamps off as it unwinds, and has to be let
+            // finish first or it turns off this one's instead — see
+            // ``PlaybackRunner``.
+            playback.replace { [weak self] in
+                await self?.runListenMode(lesson, from: target)
             }
         default:
             // Light up wherever you landed, so you can see where you'll start.
@@ -412,14 +452,23 @@ public final class PracticeModel {
             if session?.index != stepCursor { session?.seek(to: stepCursor) }
         }
 
-        // Make sure nothing is left sounding.
+        // Whatever this run left sounding or lit is its own to clear up, and it has
+        // to finish doing so before anything replaces it.
         if soundNotes {
             for note in sounding { piano.soundNote(note, on: false) }
             piano.allSoundOff()
         }
         piano.allLampsOff()
+
+        // A cancelled run says nothing about where things stand: whatever stopped
+        // it — Stop, or a seek that is about to start playing again — has the last
+        // word, and it has already had it.
+        guard !Task.isCancelled else { return }
+
+        // Leave the timeline at the end rather than one step short of it.
+        session?.seek(to: lesson.steps.count)
         isRunning = false
-        statusMessage = Task.isCancelled ? "Stopped." : "Finished playing."
+        statusMessage = "Finished playing."
     }
 
     // MARK: - Derived UI state

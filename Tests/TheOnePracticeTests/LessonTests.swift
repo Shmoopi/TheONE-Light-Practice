@@ -80,6 +80,18 @@ enum MIDIBuilder {
         ])
         return file(tracks: [right, left])
     }
+
+    /// A one-note-at-a-time run up the keyboard, for tests that need somewhere to
+    /// seek to.
+    static func scaleFile(from first: UInt8 = 60, count: Int = 8) -> Data {
+        var events: [[UInt8]] = [trackName("Right Hand"), tempo(bpm: 120)]
+        for step in 0..<count {
+            let note = first + UInt8(step)
+            events.append(noteOn(note, 90))
+            events.append(noteOff(note, delta: 240))
+        }
+        return file(tracks: [track(events)])
+    }
 }
 
 final class MIDIFileTests: XCTestCase {

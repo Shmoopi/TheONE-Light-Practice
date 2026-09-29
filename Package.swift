@@ -3,7 +3,10 @@ import PackageDescription
 
 let package = Package(
     name: "TheOnePractice",
-    platforms: [.macOS(.v14)],
+    // The iOS app is built from these same sources by TheOnePractice.xcodeproj —
+    // SwiftPM has no notion of an iOS app bundle, but it does typecheck the code
+    // for the platform.
+    platforms: [.macOS(.v14), .iOS(.v17)],
     targets: [
         .executableTarget(
             name: "TheOnePractice",

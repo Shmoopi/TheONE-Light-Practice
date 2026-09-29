@@ -82,7 +82,7 @@ struct PianoKeyboardView: View {
 /// What the colours mean.
 struct KeyboardLegend: View {
     var body: some View {
-        HStack(spacing: 14) {
+        FlowLayout(spacing: 14, rowSpacing: 4) {
             item(.orange, "Play this")
             item(.green, "Correct")
             item(.red, "Wrong note")

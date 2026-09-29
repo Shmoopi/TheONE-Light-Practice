@@ -1,8 +1,9 @@
-import SwiftUI
+// Command-line tooling for the developer, not part of the app on iPhone or iPad —
+// there is no command line to pass flags on, and no AppKit to write PNGs with.
+#if os(macOS)
 
-#if canImport(AppKit)
 import AppKit
-#endif
+import SwiftUI
 
 /// Saves pictures of the app's screens, used in the README.
 ///
@@ -92,11 +93,9 @@ enum Screenshots {
     }
 
     private static func write(_ image: CGImage, to url: URL) {
-        #if canImport(AppKit)
         let rep = NSBitmapImageRep(cgImage: image)
         guard let data = rep.representation(using: .png, properties: [:]) else { return }
         try? data.write(to: url)
-        #endif
     }
 
     // MARK: - Scenes
@@ -225,3 +224,5 @@ private struct ExampleSeekBar: View {
         .frame(maxWidth: 520)
     }
 }
+
+#endif

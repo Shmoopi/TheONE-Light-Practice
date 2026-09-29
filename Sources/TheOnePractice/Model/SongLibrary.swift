@@ -6,8 +6,12 @@ import Foundation
 /// your library keeps working even if you move, rename, or delete the original
 /// file — and everything you added is still there next time you open the app.
 ///
-/// The folder is:
-/// `~/Library/Application Support/TheONE Light Practice/Songs`
+/// On a Mac the folder is out of the way, in
+/// `~/Library/Application Support/TheONE Light Practice/Songs`.
+///
+/// On iPhone and iPad it is the app's own folder in the Files app, because that's
+/// how music gets onto the device in the first place: drop a `.mid` file in there
+/// and it's in the library next time the app comes to the front.
 public struct SongLibrary {
 
     public enum LibraryError: LocalizedError {
@@ -33,14 +37,25 @@ public struct SongLibrary {
         if let folder {
             self.folder = folder.resolvingSymlinksInPath()
         } else {
-            let support = FileManager.default.urls(
-                for: .applicationSupportDirectory, in: .userDomainMask
-            ).first ?? URL(fileURLWithPath: NSTemporaryDirectory())
-            self.folder = support
-                .appendingPathComponent("TheONE Light Practice")
-                .appendingPathComponent("Songs")
-                .resolvingSymlinksInPath()
+            self.folder = Self.defaultFolder().resolvingSymlinksInPath()
         }
+    }
+
+    private static func defaultFolder() -> URL {
+        let fallback = URL(fileURLWithPath: NSTemporaryDirectory())
+        #if os(iOS)
+        // Documents itself, with no folder inside it: this is what you see when
+        // you open the app in Files, so anything dropped in is a song.
+        return FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)
+            .first ?? fallback
+        #else
+        let support = FileManager.default.urls(
+            for: .applicationSupportDirectory, in: .userDomainMask
+        ).first ?? fallback
+        return support
+            .appendingPathComponent("TheONE Light Practice")
+            .appendingPathComponent("Songs")
+        #endif
     }
 
     public func createFolderIfNeeded() throws {
