@@ -95,17 +95,43 @@ jobs:
           echo "SIGNING_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
           echo "Signing as: $IDENTITY"
 
-      - name: Build and sign
+      # Notarising happens twice, and the order matters. A disk image is read-only
+      # once built, so the app has to get its own approval before it is sealed
+      # inside one — otherwise the copy someone drags to their Applications
+      # folder carries nothing, and an offline Mac can't check it.
+      - name: Build and sign the app
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
-        run: Scripts/release.sh "$SIGNING_IDENTITY" "$TEAM_ID"
+        run: Scripts/release.sh app "$SIGNING_IDENTITY" "$TEAM_ID"
 
-      - name: Notarise
+      - name: Notarise the app
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: Scripts/notarize.sh "build/TheONE Light Practice.app"
+
+      - name: Wrap the approved app in a disk image
+        env:
+          TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: Scripts/release.sh dmg "$SIGNING_IDENTITY" "$TEAM_ID"
+
+      - name: Notarise the disk image
         env:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
         run: Scripts/notarize.sh "build/TheONE Light Practice.dmg"
+
+      # Both staples are on by now, and stapling rewrites the file — so this has
+      # to come afterwards or the checksum would describe a build nobody gets.
+      - name: Check the app inside the image carries its own approval
+        run: |
+          MOUNT=$(hdiutil attach -nobrowse -readonly "build/TheONE Light Practice.dmg" \
+            | grep -o '/Volumes/.*' | head -1)
+          xcrun stapler validate "$MOUNT/TheONE Light Practice.app"
+          spctl -a -vvv -t install "$MOUNT/TheONE Light Practice.app"
+          hdiutil detach "$MOUNT" -quiet
 
       - name: Work out the version and checksum
         id: info

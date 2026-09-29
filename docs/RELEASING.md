@@ -85,16 +85,27 @@ tap on its own. Worth doing only if enough people install this way to care.
 If you'd rather not use GitHub Actions:
 
 ```
-Scripts/release.sh "Developer ID Application: Your Name (TEAMID)" TEAMID
-
 export APPLE_ID="you@example.com"
 export APP_PASSWORD="abcd-efgh-ijkl-mnop"
 export TEAM_ID="A1B2C3D4E5"
+IDENTITY="Developer ID Application: Your Name (TEAMID)"
+
+Scripts/release.sh app "$IDENTITY" "$TEAM_ID"
+Scripts/notarize.sh "build/TheONE Light Practice.app"
+Scripts/release.sh dmg "$IDENTITY" "$TEAM_ID"
 Scripts/notarize.sh "build/TheONE Light Practice.dmg"
 ```
 
-Leave the arguments off `release.sh` for an unsigned build. That's fine on your own
-Mac, but it won't open on anyone else's.
+Four steps rather than two, because the app needs its own approval attached before
+it goes into the disk image. A disk image can't be written to once it's built, so
+an app packaged first could never be given one — and that app is what people end
+up running once they've dragged it out. Stapling only the image is enough for the
+download to open, but a copy in someone's Applications folder would carry nothing,
+and an offline Mac would have no way to check it.
+
+Leave the arguments off `release.sh` for an unsigned build, and leave the stage off
+to do both halves at once. That's fine on your own Mac, but it won't open on
+anyone else's.
 
 ## When something goes wrong
 
