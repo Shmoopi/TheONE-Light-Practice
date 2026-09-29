@@ -1,6 +1,6 @@
 cask "theone-light-practice" do
-  version "0.0.0"
-  sha256 "0000000000000000000000000000000000000000000000000000000000000000"
+  version "1.0.0"
+  sha256 "c439e6114e297c05ef1047edd44566b604f6234ae9d5f7e03f9234f925b55fbe"
 
   url "https://github.com/Shmoopi/TheONE-Light-Practice/releases/download/v#{version}/TheONE.Light.Practice.dmg",
       verified: "github.com/Shmoopi/TheONE-Light-Practice/"
