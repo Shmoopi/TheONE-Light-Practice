@@ -14,8 +14,11 @@ to make a lamp problem obvious rather than to be musically interesting:
 All three melodies are long out of copyright: Beethoven's Ode to Joy (1824), and
 the traditional Twinkle Twinkle and Frère Jacques.
 
-    python tools/make-easy-song.py                 # write all of them
-    python tools/make-easy-song.py ode-to-joy      # just one
+    python3 Scripts/make-easy-song.py                 # write all of them
+    python3 Scripts/make-easy-song.py ode-to-joy      # just one
+
+Nothing outside the standard library is needed — the tests run this to produce
+their fixtures, so it has to work on a bare machine.
 """
 
 from __future__ import annotations
@@ -23,10 +26,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import mido
-
 TICKS = 480
-OUT_DIR = Path("samples")
+OUT_DIR = Path(__file__).resolve().parent.parent / "Samples"
 
 # Note names for readability. Middle C = C4 = 60.
 C3, D3, E3, F3, G3, A3, B3 = 48, 50, 52, 53, 55, 57, 59
@@ -85,35 +86,59 @@ SONGS: dict[str, dict] = {
 }
 
 
-def build_track(name: str, events, bpm: int | None = None) -> mido.MidiTrack:
-    """Turn (note, beats) pairs into a named MIDI track."""
-    track = mido.MidiTrack()
-    track.append(mido.MetaMessage("track_name", name=name, time=0))
+def variable_length(value: int) -> bytes:
+    """A delta time, in the packed form MIDI files store times in."""
+    if value < 0:
+        raise ValueError(f"delta times cannot be negative: {value}")
+    out = bytearray([value & 0x7F])
+    value >>= 7
+    while value:
+        out.append((value & 0x7F) | 0x80)
+        value >>= 7
+    out.reverse()
+    return bytes(out)
+
+
+def build_track(name: str, events, bpm: int | None = None) -> bytes:
+    """Turn (note, beats) pairs into a named MIDI track chunk."""
+    title = name.encode("utf-8")
+    body = bytearray()
+    body += variable_length(0) + b"\xff\x03" + variable_length(len(title)) + title
     if bpm is not None:
-        track.append(mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(bpm), time=0))
+        microseconds_per_beat = round(60_000_000 / bpm)
+        body += variable_length(0) + b"\xff\x51\x03"
+        body += microseconds_per_beat.to_bytes(3, "big")
 
     for note, beats in events:
         ticks = int(round(beats * TICKS))
         if note is None:  # rest: carry the time onto the next note-on
-            track.append(mido.Message("note_on", note=0, velocity=0, time=ticks))
+            body += variable_length(ticks) + bytes([0x90, 0, 0])
             continue
         # A short gap between notes so repeated pitches retrigger visibly.
         gap = min(20, max(1, ticks // 12))
-        track.append(mido.Message("note_on", note=note, velocity=90, time=0))
-        track.append(mido.Message("note_off", note=note, velocity=0, time=ticks - gap))
-        track.append(mido.Message("note_on", note=note, velocity=0, time=gap))
-    return track
+        body += variable_length(0) + bytes([0x90, note, 90])
+        body += variable_length(ticks - gap) + bytes([0x80, note, 0])
+        body += variable_length(gap) + bytes([0x90, note, 0])
+
+    body += variable_length(0) + b"\xff\x2f\x00"   # end of track
+    return b"MTrk" + len(body).to_bytes(4, "big") + bytes(body)
 
 
 def write_song(key: str) -> Path:
     spec = SONGS[key]
-    midi = mido.MidiFile(ticks_per_beat=TICKS)
-    midi.tracks.append(build_track("Right Hand", spec["melody"], bpm=spec["bpm"]))
-    midi.tracks.append(build_track("Left Hand", spec["bass"]))
+    tracks = [
+        build_track("Right Hand", spec["melody"], bpm=spec["bpm"]),
+        build_track("Left Hand", spec["bass"]),
+    ]
+    # Format 1: several tracks played together, on one timeline.
+    header = b"MThd" + (6).to_bytes(4, "big")
+    header += (1).to_bytes(2, "big")
+    header += len(tracks).to_bytes(2, "big")
+    header += TICKS.to_bytes(2, "big")
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     path = OUT_DIR / f"{key}.mid"
-    midi.save(str(path))
+    path.write_bytes(header + b"".join(tracks))
     return path
 
 
@@ -132,9 +157,7 @@ def main() -> int:
         print(f"{path}")
         print(f"  {spec['description']}")
         print(f"  {spec['bpm']} bpm, {beats:g} beats ≈ {beats * 60 / spec['bpm']:.0f}s")
-    print("\nplay it:")
-    print(f'  python -m theone song play {OUT_DIR / (wanted[0] + ".mid")} \\')
-    print('      --port "THE ONE" --codec theone-light --tempo 0.6 --look-ahead 0.4')
+    print("\nOpen the app, drag one onto the song list, and press Start.")
     return 0
 
 

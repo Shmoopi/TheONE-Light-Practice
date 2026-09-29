@@ -12,14 +12,32 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Whichever Xcode the runner image happens to carry, newest first. Naming
+      # an exact version here means a silent break every time the image rolls.
       - name: Use the latest Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.app
+        run: |
+          LATEST=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$LATEST" ]; then
+            echo "Selecting $LATEST"
+            sudo xcode-select -s "$LATEST"
+          else
+            echo "No versioned Xcode found; using the default."
+          fi
 
       - name: Show versions
-        run: swift --version
+        run: |
+          swift --version
+          xcodebuild -version
 
       - name: Build
         run: swift build -c release
+
+      # The sample songs aren't committed, so the tests that read them would
+      # quietly skip and leave this job green having checked nothing.
+      - name: Generate the practice samples
+        run: |
+          python3 Scripts/make-easy-song.py
+          test -f "Samples/ode-to-joy.mid" || { echo "::error::samples were not written"; exit 1; }
 
       - name: Test
         run: swift test
@@ -34,3 +52,15 @@ jobs:
           test -f "$APP/Contents/Info.plist"
           test -f "$APP/Contents/Resources/AppIcon.icns"
           echo "bundle OK"
+
+      # The same sources, built as an iPhone and iPad app. Unsigned, because CI
+      # has no certificate and doesn't need one to prove the code compiles and
+      # bundles.
+      - name: Build for iOS
+        run: |
+          xcodebuild build \
+            -project TheOnePractice.xcodeproj \
+            -scheme "TheONE Light Practice" \
+            -destination 'generic/platform=iOS Simulator' \
+            -quiet \
+            CODE_SIGNING_ALLOWED=NO

@@ -4,3 +4,17 @@ build/
 *.xcuserstate
 xcuserdata/
 Resources/AppIcon.iconset/
+*.xcodeproj/project.xcworkspace/
+*.xcodeproj/xcuserdata/
+
+# Practice songs, written by Scripts/make-easy-song.py. Generated rather than
+# committed, so the repository carries no music it doesn't hold the rights to.
+Samples/
+
+# Scripts
+Scripts/set-*.sh
+
+# Anything exported from Keychain, in case one is ever left in the folder.
+*.p12
+*.cer
+*.mobileprovision

@@ -2,11 +2,11 @@ cask "theone-light-practice" do
   version "0.0.0"
   sha256 "0000000000000000000000000000000000000000000000000000000000000000"
 
-  url "https://github.com/OWNER/TheONE-Light-Practice/releases/download/v#{version}/TheONE.Light.Practice.dmg",
-      verified: "github.com/OWNER/TheONE-Light-Practice/"
+  url "https://github.com/Shmoopi/TheONE-Light-Practice/releases/download/v#{version}/TheONE.Light.Practice.dmg",
+      verified: "github.com/Shmoopi/TheONE-Light-Practice/"
   name "TheONE Light Practice"
   desc "Learn any song on a THE ONE Light light-up keyboard"
-  homepage "https://github.com/OWNER/TheONE-Light-Practice"
+  homepage "https://github.com/Shmoopi/TheONE-Light-Practice"
 
   depends_on macos: ">= :sonoma"
 

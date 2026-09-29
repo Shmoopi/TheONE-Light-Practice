@@ -64,20 +64,21 @@ It takes about ten minutes, most of it waiting on Apple.
 
 ## Homebrew
 
-`Casks/theone-light-practice.rb` lets people install with:
+`Casks/theone-light-practice.rb` makes this repository a Homebrew tap. Because
+the cask lives here rather than in Homebrew's own repository, people add the tap
+once before installing:
 
 ```
+brew tap Shmoopi/theone-light-practice https://github.com/Shmoopi/TheONE-Light-Practice
 brew install --cask theone-light-practice
 ```
 
-To make that work, replace `OWNER` in the cask with your GitHub username, then
-tell people to add your tap once:
+The release workflow keeps the version and checksum up to date from then on, so
+after the first release there is nothing to do here by hand.
 
-```
-brew tap OWNER/theone-light-practice https://github.com/OWNER/TheONE-Light-Practice
-```
-
-The release workflow keeps the version and checksum up to date from then on.
+If you'd rather people could skip the `brew tap` line, the cask has to move to a
+repository named `homebrew-something` — that naming is what lets Homebrew find a
+tap on its own. Worth doing only if enough people install this way to care.
 
 ## Doing it by hand
 

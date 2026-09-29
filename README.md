@@ -28,20 +28,28 @@ on until you do.
 
 ## What you need
 
-- A **THE ONE Light** keyboard, plugged into your Mac with a USB cable
-- A Mac running **macOS 14** or later
-- Some songs — any `.mid` file works. There are three easy ones in `Samples/` to
-  get started.
+- A **THE ONE Light** keyboard, plugged in with a USB cable
+- A **Mac** running macOS 14 or later, or an **iPad or iPhone** running iOS 17 or
+  later
+- Some songs — any `.mid` file works. Running `python3 Scripts/make-easy-song.py`
+  writes three easy ones into `Samples/` to get started.
 
 ## Getting started
 
-**Install it**
+**On a Mac**
 
 ```
+brew tap Shmoopi/theone-light-practice https://github.com/Shmoopi/TheONE-Light-Practice
 brew install --cask theone-light-practice
 ```
 
 Or download the latest release, drag it to your Applications folder, and open it.
+
+**On an iPad or iPhone**
+
+Build it yourself with Xcode — there's no App Store build.
+[docs/IPHONE-AND-IPAD.md](docs/IPHONE-AND-IPAD.md) walks through it, including
+which cable or adapter you need.
 
 **Then**
 
@@ -101,16 +109,23 @@ the app guesses by splitting at middle C — which is wrong wherever your hands 
 over. It'll tell you when it's guessing.
 
 **Where are my songs kept?**
-In `~/Library/Application Support/TheONE Light Practice/Songs`. Songs are copied
-there when you add them, so moving or deleting the original won't break anything.
+On a Mac, in `~/Library/Application Support/TheONE Light Practice/Songs`. On an
+iPad or iPhone, in the app's own folder in the **Files** app — you can drop `.mid`
+files straight in there. Songs are copied in when you add them, so moving or
+deleting the original won't break anything.
 
 ## Making your own practice songs
 
-`Scripts/make-easy-song.py` writes a few simple, out-of-copyright tunes:
+`Scripts/make-easy-song.py` writes a few simple, out-of-copyright tunes into
+`Samples/` — Beethoven's Ode to Joy, Twinkle Twinkle, and Frère Jacques:
 
 ```
-python3 Scripts/make-easy-song.py
+python3 Scripts/make-easy-song.py           # all of them
+python3 Scripts/make-easy-song.py twinkle   # just one
 ```
+
+It needs nothing but Python itself. These are generated rather than kept in the
+repository, so there's no music here that isn't free to pass on.
 
 Any MIDI file works, though. If the file labels its parts "Left Hand" and "Right
 Hand", the app will use those labels and get the hands exactly right.
@@ -118,10 +133,15 @@ Hand", the app will use those labels and get the hands exactly right.
 ## Building it yourself
 
 ```
-swift build            # build
-swift test             # run the tests
-Scripts/bundle.sh      # make the app
+swift build                          # build
+python3 Scripts/make-easy-song.py    # write the sample songs the tests read
+swift test                           # run the tests
+Scripts/bundle.sh                    # make the Mac app
 ```
+
+For iPhone and iPad, open `TheOnePractice.xcodeproj` — it builds the same sources
+in `Sources/TheOnePractice`, so there's one copy of the code and no project file
+to keep in step. See [docs/IPHONE-AND-IPAD.md](docs/IPHONE-AND-IPAD.md).
 
 `docs/PROTOCOL.md` explains how the app talks to the keyboard, if you're curious.
 

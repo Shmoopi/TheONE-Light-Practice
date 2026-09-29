@@ -31,8 +31,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Whichever Xcode the runner image happens to carry, newest first. Naming
+      # an exact version here means a silent break every time the image rolls.
       - name: Use the latest Xcode
-        run: sudo xcode-select -s /Applications/Xcode_16.app
+        run: |
+          LATEST=$(ls -d /Applications/Xcode_*.app 2>/dev/null | sort -V | tail -1)
+          if [ -n "$LATEST" ]; then
+            echo "Selecting $LATEST"
+            sudo xcode-select -s "$LATEST"
+          else
+            echo "No versioned Xcode found; using the default."
+          fi
 
       - name: Check the signing secrets are present
         env:
@@ -50,6 +59,13 @@ jobs:
             echo "::error::Missing secrets:$missing — see docs/RELEASING.md"
             exit 1
           fi
+
+      # The sample songs aren't committed, so the tests that read them would
+      # quietly skip and let an untested build go out under a version tag.
+      - name: Generate the practice samples
+        run: |
+          python3 Scripts/make-easy-song.py
+          test -f "Samples/ode-to-joy.mid" || { echo "::error::samples were not written"; exit 1; }
 
       - name: Test before releasing
         run: swift test
